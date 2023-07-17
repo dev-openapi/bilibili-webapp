@@ -29,8 +29,10 @@ var _ = multipart.ErrMessageTooLarge
 // Client API for Oauth service
 
 type OauthService interface {
-	// GetAccessToken 
+	// GetAccessToken  获取AccessToken https://openhome.bilibili.com/doc/4/eaf0e2b5-bde9-b9a0-9be1-019bb455701c
 	GetAccessToken(ctx context.Context, in *GetAccessTokenReq, opts ...Option) (*GetAccessTokenRes, error)
+	// RefreshToken  刷新token https://openhome.bilibili.com/doc/4/eaf0e2b5-bde9-b9a0-9be1-019bb455701c
+	RefreshToken(ctx context.Context, in *RefreshTokenReq, opts ...Option) (*RefreshTokenRes, error)
 }
 
 type oauthService struct {
@@ -75,6 +77,48 @@ func (c *oauthService) GetAccessToken(ctx context.Context, in *GetAccessTokenReq
 	}
 	if in.GetGrantType() != "" {
 		params.Add("grant_type", fmt.Sprintf("%v", in.GetGrantType()))
+	}	
+	req.URL.RawQuery = params.Encode()
+	
+	// header
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	resp, err := opt.DoRequest(ctx, opt.client, req)
+	if err != nil {
+		return nil, err
+	}
+	err = opt.DoResponse(ctx, resp, &res)
+	return &res, err 
+
+}
+
+func (c *oauthService) RefreshToken(ctx context.Context, in *RefreshTokenReq, opts ...Option) (*RefreshTokenRes, error) {
+	var res RefreshTokenRes
+	// options
+	opt := buildOptions(c.opts, opts...)
+	headers := make(map[string]string)
+	// route
+	rawURL := fmt.Sprintf("%s/x/account-oauth2/v1/refresh_token", opt.addr)
+
+	// body
+	req, err := http.NewRequest("POST", rawURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	
+	params := req.URL.Query()
+	if in.GetClientId() != "" {
+		params.Add("client_id", fmt.Sprintf("%v", in.GetClientId()))
+	}
+	if in.GetClientSecret() != "" {
+		params.Add("client_secret", fmt.Sprintf("%v", in.GetClientSecret()))
+	}
+	if in.GetGrantType() != "" {
+		params.Add("grant_type", fmt.Sprintf("%v", in.GetGrantType()))
+	}
+	if in.GetRefreshToken() != "" {
+		params.Add("refresh_token", fmt.Sprintf("%v", in.GetRefreshToken()))
 	}	
 	req.URL.RawQuery = params.Encode()
 	

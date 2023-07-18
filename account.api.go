@@ -31,6 +31,8 @@ var _ = multipart.ErrMessageTooLarge
 type AccountService interface {
 	// GetAccountInfo  获取用户公开信息 https://openhome.bilibili.com/doc/4/feb66f99-7d87-c206-00e7-d84164cd701c
 	GetAccountInfo(ctx context.Context, in *GetAccountInfoReq, opts ...Option) (*GetAccountInfoRes, error)
+	// GetAccountScopes  查询用户已授权权限列表 https://openhome.bilibili.com/doc/4/08f935c5-29f1-e646-85a3-0b11c2830558
+	GetAccountScopes(ctx context.Context, in *GetAccountScopesReq, opts ...Option) (*GetAccountScopesRes, error)
 }
 
 type accountService struct {
@@ -71,6 +73,40 @@ func (c *accountService) GetAccountInfo(ctx context.Context, in *GetAccountInfoR
 		params.Add("client_id", fmt.Sprintf("%v", in.GetClientId()))
 	}	
 	req.URL.RawQuery = params.Encode()
+	
+	// header
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	resp, err := opt.DoRequest(ctx, opt.client, req)
+	if err != nil {
+		return nil, err
+	}
+	err = opt.DoResponse(ctx, resp, &res)
+	return &res, err 
+
+}
+
+func (c *accountService) GetAccountScopes(ctx context.Context, in *GetAccountScopesReq, opts ...Option) (*GetAccountScopesRes, error) {
+	var res GetAccountScopesRes
+	// options
+	opt := buildOptions(c.opts, opts...)
+	headers := make(map[string]string)
+	// route
+	rawURL := fmt.Sprintf("%s/arcopen/fn/user/account/scopes", opt.addr)
+
+	// body
+	bs, err := json.Marshal(in)
+	if err != nil {
+		return nil, err
+	}
+	body := bytes.NewReader(bs)
+	headers["Content-Type"] = "application/json"
+
+	req, err := http.NewRequest("GET", rawURL, body)
+	if err != nil {
+		return nil, err
+	}
 	
 	// header
 	for k, v := range headers {
